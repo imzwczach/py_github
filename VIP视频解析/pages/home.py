@@ -1,7 +1,7 @@
 
 from commons.config import Config
 from commons.image_label import ClickableLabel, ImageLabel
-from engine import Album, EngineWKVip
+from engine import *
 from commons.page import *
 from pages.detail import DetailPage
 from PySide6.QtWidgets import QCompleter
@@ -41,13 +41,16 @@ class HomePage(ListPage):
     def __init__(self, title):
         super().__init__(title)
 
+        self.engine = EngineMoDu()
+
         top_layout = QHBoxLayout()
         
         self.combo_box = QComboBox(self)
         self.combo_box.setFixedHeight(30)
+        self.combo_box.addItem("魔都动漫")
         self.combo_box.addItem("我看VIP")
-        self.combo_box.addItem("todo")
         top_layout.addWidget(self.combo_box)
+        self.combo_box.currentIndexChanged.connect(self.engine_changed_index)
         
         # 搜索输入框 (QComboBox)
         self.search_box = QComboBox(self)
@@ -71,11 +74,22 @@ class HomePage(ListPage):
         # 历史记录
         self.history = Config().search_history
         self.update_completer()  # 初始化自动完成器
+    
+    def engine_changed_index(self, index):
+        if index == 0:
+            self.engine = EngineMoDu()
+            self.search_box.setVisible(False)
+            self.search_button.setVisible(False)
+        elif index == 1:
+            self.engine = EngineWKVip()
+            self.search_box.setVisible(True)
+            self.search_button.setVisible(True)
+        self.reload_data()
 
-    def list_page_items(self, list_widget):
+    def reload_data(self):
+
         search_text = self.search_box.currentText()
-        self.albums = EngineWKVip().get_albums(search_text)
-        # self.albums = EngineWKVip().get_albums('吞噬星空')
+        self.albums = self.engine.get_albums(search_text)
 
         # 更新历史记录
         search_text = self.search_box.currentText()
@@ -84,6 +98,9 @@ class HomePage(ListPage):
             Config().save_search_history(self.history)  # 保存历史记录到文件
             self.update_completer()  # 更新自动完成器
 
+        super().reload_data()
+
+    def list_page_items(self, list_widget):
         return [CustomWidget(m) for m in self.albums]
 
     def list_page_item_selected(self, item, index):

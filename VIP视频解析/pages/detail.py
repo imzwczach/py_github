@@ -4,7 +4,6 @@ from engine import Album, EngineWKVip
 from commons.page import *
 from PySide6.QtCore import Qt
 from commons.FlowLayout import FlowLayout
-from pages.player import PlayerPage
 
 kImageHeight = 300
 kImageWidth = 200
@@ -24,19 +23,11 @@ class DetailPage(Page):
 
         # 创建文本标签，显示 item 中的某个字段
         text_label = QLabel() 
-
-        self.url_label = QLabel()
         
         # 创建一个水平布局，用于图片和文本标签的组合
         hbox = QHBoxLayout()
         hbox.addWidget(image_label)
-
-        vbox = QVBoxLayout()
-        vbox.addWidget(text_label)
-        vbox.addWidget(self.url_label)
-
-        hbox.addLayout(vbox)
-
+        hbox.addWidget(text_label)
         self.layout.addLayout(hbox)
 
         self.page_numbers_layout = FlowLayout(margin=5, spacing=5)
@@ -83,8 +74,6 @@ class DetailPage(Page):
                 widget.setStyleSheet("background-color: lightgray;")
 
         video = self.album.videos[page_index]
-
-        self.url_label.setText(video['url'])
         
         import webbrowser
         webbrowser.open(f"https://video.isyour.love/Search/SearchJx?t=&id={video['url']}")
@@ -92,8 +81,8 @@ class DetailPage(Page):
         # vc = PlayerPage(video_title=video['title'], video_url=video['url'])
         # self.push(vc)
 
-        # import pyperclip
-        # pyperclip.copy(video['url'])
+        import pyperclip
+        pyperclip.copy(video['url'])
 
         # msg_box = QMessageBox()
         # msg_box.setText(f"已复制{video['title']}的链接地址！")

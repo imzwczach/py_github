@@ -1,3 +1,4 @@
 cache.db
 __pycache__/
-shared_cache/
+build
+shared_cache

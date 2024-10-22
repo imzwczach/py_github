@@ -2,6 +2,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from PySide6.QtCore import Signal, QObject
 import requests
 from commons.config import Config
+from lxml import etree
 
 class Album:
     def __init__(self, title, nums=None, id=None, source=None, img=None, url=None, flag=None) -> None:
@@ -94,3 +95,55 @@ class EngineWKVip(Engine):
                     arr.append({'title': parts[0], 'url': parts[1]})
             album.videos = arr
         return album
+
+# https://moduzy1.com/list1/
+class EngineMoDu(Engine):
+
+    def request_album_url(self, keyword=None):
+        return "https://moduzy1.com/list1/"
+
+    def request_album_detail_url(self, album):
+        return f"https://a.wkvip.net/api.php?out=json&flag={album.flag}&id={album.id}"
+
+    def get_reponse_data(self, url):
+        try:
+            response = requests.get(url)
+            response.raise_for_status()
+            data = response.text#.encoding('utf-8')
+            return data
+        except Exception as e:
+            raise Exception(f'请求{url},发生错误:{e}')
+
+    def get_albums(self, keyword):
+        data = self.get_reponse_data(self.request_album_url())
+        # 将字符串转换为 HTML 树结构
+        html_tree = etree.HTML(data)
+
+        # 使用 xpath 提取元素
+        titles = html_tree.xpath('//tbody/tr//a/text()')
+        sources = html_tree.xpath('//tbody/tr//small/text()')
+        hrefs =  html_tree.xpath('//tbody/tr//a/@href')
+        albums = []
+        for i in range(len(titles)):
+            album = Album('')
+            album.title = titles[i]
+            album.source = sources[i]
+            album.url = 'https://moduzy1.com' + hrefs[i]
+            albums.append(album)
+        return albums
+        
+    def get_album_detail(self, album):
+        data = super().get_album_detail(album)
+        album.img = data['pic']
+        items = data.get('info', [])
+        if len(items):
+            album.nums = items[0]['part']
+            videos = items[0]['video']
+            arr = []
+            for v in videos:
+                parts = v.split('$')
+                if len(parts) > 1:
+                    arr.append({'title': parts[0], 'url': parts[1]})
+            album.videos = arr
+        return album
+
