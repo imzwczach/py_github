@@ -6,15 +6,15 @@ from io import BytesIO
 
 class ClickableLabel(QLabel):
     """可点击的标签类"""
-    clicked = Signal()  # 自定义信号
+    clicked = Signal(object)  # 自定义信号
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
-            self.clicked.emit()  # 触发点击信号
-        # super().mousePressEvent(event)
+            self.clicked.emit(self)  # 触发点击信号
+        super().mousePressEvent(event)
 
 class ImageLabel(ClickableLabel):
 

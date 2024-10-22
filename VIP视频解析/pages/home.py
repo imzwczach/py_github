@@ -1,10 +1,44 @@
 
 from commons.image_label import ClickableLabel, ImageLabel
-from engine import EngineWKVip
+from engine import Album, EngineWKVip
 from commons.page import *
 from pages.detail import DetailPage
 
-class HomePage(Page):
+kImageHeight = 120
+kImageWidth = 80
+
+class CustomWidget(QWidget):
+    def __init__(self, album:Album):
+        super().__init__()
+
+        self.album = album
+
+        self.content_layout = QVBoxLayout()
+
+        # 创建图片标签 (这里可以设置为真实图片)
+        image_label = ImageLabel(size=(kImageWidth, kImageHeight))
+                
+        # 将 album 数据绑定到 QLabel 的属性中
+        image_label.setProperty("id", album.id)
+
+        # 连接点击信号到处理函数
+        image_label.clicked.connect(lambda: self.on_label_clicked(album))
+
+        # 创建文本标签，显示 item 中的某个字段
+        text = f"<b>{album.title}</b><br> {album.source}"
+        text_label = QLabel(text) 
+        
+        # 创建一个水平布局，用于图片和文本标签的组合
+        hbox = QHBoxLayout()
+        hbox.addWidget(image_label)
+        hbox.addWidget(text_label)
+
+        self.setLayout(hbox)
+    
+    def title(self):
+        return self.album.title
+
+class HomePage(ListPage):
     def __init__(self, title):
         super().__init__(title)
 
@@ -16,7 +50,7 @@ class HomePage(Page):
         
         self.line_edit = QLineEdit()
         self.button = QPushButton("按钮")
-        self.button.clicked.connect(self.fetch_data)
+        self.button.clicked.connect(self.reload_data)
         
         top_layout.addWidget(self.combo_box)
         top_layout.addWidget(self.line_edit)
@@ -24,71 +58,19 @@ class HomePage(Page):
         
         self.layout.addLayout(top_layout)
         
-        self.content_layout = QVBoxLayout()
-        self.scroll_area = QScrollArea()
-        self.scroll_area.setWidgetResizable(True)
-        
-        container = QFrame()
-        container.setLayout(self.content_layout)
-        self.scroll_area.setWidget(container)
-        
-        self.layout.addWidget(self.scroll_area)
+        self.setStyleSheet("background:#dddddd;padding:5px;")
+        self.itemHeight = kImageHeight+20
+        self.set_delegate(self)
+        self.albums = None
 
-    def fetch_data(self):
-        engine = EngineWKVip()
-        try:
-            # albums = engine.get_albums(self.line_edit.text().strip())
-            albums = engine.get_albums('吞噬星空')
+    def list_page_items(self, list_widget):
+        # self.albums = EngineWKVip().get_albums(self.line_edit.text().strip())
+        self.albums = EngineWKVip().get_albums('吞噬星空')
+        return [CustomWidget(m) for m in self.albums]
 
-            # 清除现有布局中的所有元素
-            self.clear_layout(self.content_layout)
-            
-            # 动态生成新的图片和文本标签
-            for album in albums:
-                # 创建图片标签 (这里可以设置为真实图片)
-                image_label = ImageLabel(size=(80, 140))
-                        
-                # 将 album 数据绑定到 QLabel 的属性中
-                image_label.setProperty("id", album.id)
+    def list_page_item_selected(self, item, index):
+        detail_page = DetailPage(self.albums[index])
+        self.push(detail_page)
 
-                # 创建文本标签，显示 item 中的某个字段
-                text = f"<b>{album.title}</b><br> {album.source}"
-                text_label = ClickableLabel(text) 
-                
-                # 创建一个水平布局，用于图片和文本标签的组合
-                hbox = QHBoxLayout()
-                hbox.addWidget(image_label)
-                hbox.addWidget(text_label)
-                
-                # 创建一个小的容器 (QFrame) 来包含这个布局
-                frame = QFrame()
-                frame.setLayout(hbox)
-                
-                # 将这个组合容器添加到内容布局中
-                self.content_layout.addWidget(frame)
-
-                # 连接点击信号到处理函数
-                image_label.clicked.connect(lambda: self.on_label_clicked(album))
-            
-            # 更新布局以反映变化
-            self.update()
-            
-            # engine.on_got_album_detail_signal.connect(self.on_got_album_detail)
-
-            # thread = threading.Thread(target=lambda: engine.get_albums_details(albums))
-            # thread.start()
-
-        except Exception as e:
-            print(f"数据获取失败: {e}")
-
-    def clear_layout(self, layout):
-        """清除布局中的所有小部件"""
-        while layout.count():
-            child = layout.takeAt(0)
-            if child.widget():
-                child.widget().deleteLater()
-
-
-    def on_label_clicked(self, album):
-        vc = DetailPage(album)
-        self.navigation_controller.push(vc)
+    def showEvent(self, event):
+        self.reload_data()

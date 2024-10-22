@@ -1,5 +1,6 @@
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from PySide6.QtCore import Signal, QObject
+import requests
 from commons.config import Config
 
 class Album:
@@ -20,44 +21,55 @@ class Album:
         return f"{self.__class__.__name__}({attributes})"
 
 class Engine(QObject):
+
     on_got_album_detail_signal = Signal(object)
 
-    # def get_reponse_data(self, url):
-    #     try:
-    #         response = requests.get(url)
-    #         response.raise_for_status()
-    #         data = response.json()  # 解析为 JSON 数据
-    #         return data
-    #     except Exception as e:
-    #         raise Exception(f'请求{url},发生错误:{e}')
+    _instance = None  # 类变量，存储单例实例
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super(Engine, cls).__new__(cls)
+        return cls._instance
+
+    def __init__(self) -> None:
+        if not hasattr(self, 'initialized'):  # 确保文件只读取一次
+            self.initialized = True  # 标记为已初始化
+
+    def get_reponse_data(self, url):
+        try:
+            response = requests.get(url)
+            response.raise_for_status()
+            data = response.json()  # 解析为 JSON 数据
+            return data
+        except Exception as e:
+            raise Exception(f'请求{url},发生错误:{e}')
+
+    def request_album_url(self, keyword):
+        pass
+
+    def request_album_detail_url(self, album):
+        pass
 
     def get_albums(self, keyword):
-        pass
+        data = Config().request_data(self.request_album_url(keyword), 3600 * 6)
+        return data
 
-    def get_albums_details(self, albums):
-        with ThreadPoolExecutor(max_workers=5) as executor:
-            # 为每个URL分配任务
-            futures = [executor.submit(self.__get_album_detail, album) for album in albums]
-            
-        for future in as_completed(futures):
-            result = future.result()
-            if result:  # 如果下载成功，发送信号
-                album = self.schedule_album_detail(result[0], result[1])
-                self.on_got_album_detail_signal.emit(album)
+    def get_album_detail(self, album):
+        data = Config().request_data(self.request_album_detail_url(album), 3600 * 6)
+        return data
 
-    def schedule_album_detail(self, album: Album, data: dict):
-        pass
-
-    def __get_album_detail(self, album):
-        data = Config().request_data(album.url, 60*60)
-        return album, data
 
 # https://v.wkvip.net/
 class EngineWKVip(Engine):
 
+    def request_album_url(self, keyword):
+        return "https://a.wkvip.net/api.php?tp=jsonp&wd="+keyword
+
+    def request_album_detail_url(self, album):
+        return f"https://a.wkvip.net/api.php?out=json&flag={album.flag}&id={album.id}"
+
     def get_albums(self, keyword):
-        url = "https://a.wkvip.net/api.php?tp=jsonp&wd="+keyword
-        data = Config().request_data(url, 60*60)
+        data = super().get_albums(keyword)
         items = data.get('info', [])
         albums = [
             Album(title=item['title'],
@@ -68,7 +80,8 @@ class EngineWKVip(Engine):
                 ) for item in items]        
         return albums
         
-    def schedule_album_detail(self, album: Album, data: dict):
+    def get_album_detail(self, album):
+        data = super().get_album_detail(album)
         album.img = data['pic']
         items = data.get('info', [])
         if len(items):
