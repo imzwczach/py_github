@@ -15,7 +15,7 @@ class ImageGridApp(QWidget):
         home_page = HomePage('列表')
         self.nav_controller1 = NavigationController(home_page)
         self.setLayout(self.nav_controller1.layout)
-
+        
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

@@ -21,8 +21,6 @@ class ImageLabel(ClickableLabel):
     def __init__(self, url=None, size=None):
         super().__init__()
 
-        self.setText('加载...')
-
         if not size:
             size = (100, 100)
         self.setFixedSize(size[0], size[1])
@@ -30,6 +28,14 @@ class ImageLabel(ClickableLabel):
         # 下载并设置图片
         if url:
             self.load_image_from_url(url)
+        else:
+            pixmap = QPixmap('movie_default_small.png')
+            # 获取 QLabel 的尺寸，等比例缩放图片
+            # scaled_image = pixmap.scaled(self.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            # 设置缩放后的图片
+            self.setPixmap(pixmap)
+            # 居中对齐
+            self.setAlignment(Qt.AlignCenter)
 
     def load_image_from_url(self, url):
         try:

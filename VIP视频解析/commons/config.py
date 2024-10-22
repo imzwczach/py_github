@@ -15,19 +15,13 @@ class Config:
         if not hasattr(self, 'initialized'):  # 确保文件只读取一次
             self.initialized = True  # 标记为已初始化
 
-            try:
-                with open('config.json', 'r', encoding='utf-8') as file:
-                    data = json.load(file)
-                    self.etfs = data['etfs']
-            except FileNotFoundError:
-                print("配置文件未找到。")
-                self.etfs = []
-            except json.JSONDecodeError:
-                print("配置文件格式错误。")
-                self.etfs = []
-
             # 创建一个缓存对象
             self.cache = dc.Cache('shared_cache')  # 是缓存存放的目录
+
+            self.search_history = self.cache['search_history'] if 'search_history' in self.cache else []
+
+    def save_search_history(self, history):
+        self.cache.set('search_history', history, expire=3600*24*30*6)  # 设为None，永不过期
 
     def get_reponse_data(self, url):
         try:
