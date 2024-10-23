@@ -1,6 +1,7 @@
 import json
 import diskcache as dc
-import akshare as ak
+# import akshare as ak
+import efinance as ef
 
 class AppData:
     _instance = None  # 类变量，存储单例实例
@@ -33,7 +34,7 @@ class AppData:
 
         # 首先检查缓存中是否存在该 symbol 的数据
         if symbol in self.cache:
-            # print("Fetching from cache.. " + symbol)
+            print("Fetching from cache.. " + symbol)
             return self.cache[symbol]
         
         print(f'request {symbol}')
@@ -43,9 +44,10 @@ class AppData:
         # 获取今日日期
         end_date = datetime.today().strftime('%Y%m%d')
         # 获取35天前的日期
-        start_date = (datetime.today() - timedelta(days=50)).strftime('%Y%m%d')
+        start_date = (datetime.today() - timedelta(days=40)).strftime('%Y%m%d')
 
-        etf_data = ak.fund_etf_hist_em(symbol=symbol, period="daily", start_date=start_date, end_date=end_date)
+        # etf_data = ak.fund_etf_hist_em(symbol=symbol, period="daily", start_date=start_date, end_date=end_date)
+        etf_data = ef.stock.get_quote_history(symbol, beg=start_date, end=end_date)
         self.cache.set(symbol, etf_data, expire=expire)
 
         return etf_data

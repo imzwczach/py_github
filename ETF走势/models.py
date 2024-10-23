@@ -12,7 +12,7 @@ class ETFModel:
         self.nid = f"{flag}.{self.code[2:]}"
 
         symbol = re.findall(r'\d+', self.code)[0]
-        etf_data = AppData().get_etf_data(symbol, expire=300)
+        etf_data = AppData().get_etf_data(symbol)
         if etf_data.empty:
             print("No data available for the given date range.")
         else:
