@@ -4,13 +4,13 @@ from commons.page import *
 from engine import *
 from pages.home import HomePage
 
-class ImageGridApp(QWidget):
+class App(QWidget):
     def __init__(self):
         super().__init__()
 
         # 设置窗口标题和大小
         self.setWindowTitle("VIP视频解析")
-        self.resize(430, 932)
+        self.resize(420, 800)
 
         home_page = HomePage('列表')
         self.nav_controller1 = NavigationController(home_page)
@@ -19,6 +19,6 @@ class ImageGridApp(QWidget):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    ex = ImageGridApp()
+    ex = App()
     ex.show()
     sys.exit(app.exec())

@@ -1,4 +1,5 @@
 
+import datetime
 from commons.config import Config
 from commons.image_label import ClickableLabel, ImageLabel
 from engine import *
@@ -16,21 +17,26 @@ class CustomWidget(QWidget):
         self.album = album
 
         # self.content_layout = QVBoxLayout()
+        # # 创建一个水平布局，用于图片和文本标签的组合
+        hbox = QHBoxLayout()
 
         # # 创建图片标签 (这里可以设置为真实图片)
         # image_label = ImageLabel(size=(kImageWidth, kImageHeight))
-                
         # # 将 album 数据绑定到 QLabel 的属性中
         # image_label.setProperty("id", album.id)
+        # hbox.addWidget(image_label)
 
         # 创建文本标签，显示 item 中的某个字段
-        text = f"<b>{album.title}</b>&emsp; <span style='font-size:12px'>{album.source}</span>"
+        text = f"<b>{album.title}</b>&emsp;&emsp; <span style='font-size:12px;'>{album.source}</span>"
         text_label = QLabel(text) 
-        
-        # # 创建一个水平布局，用于图片和文本标签的组合
-        hbox = QHBoxLayout()
-        # hbox.addWidget(image_label)
         hbox.addWidget(text_label)
+
+        if album.date:
+            today_str = datetime.datetime.now().strftime("%Y-%m-%d")
+            color = 'red' if today_str in album.date else 'gray'
+            date_label = QLabel(f"<span style='font-size:12px; color:{color};'>{album.date}</span>")
+            date_label.setAlignment(Qt.AlignRight)
+            hbox.addWidget(date_label)
 
         self.setLayout(hbox)
     
@@ -56,12 +62,15 @@ class HomePage(ListPage):
         self.search_box = QComboBox(self)
         self.search_box.setEditable(True)  # 设置可编辑
         self.search_box.setFixedHeight(30)
+        self.search_box.setVisible(False)
         top_layout.addWidget(self.search_box)
 
         # 搜索按钮
         self.search_button = QPushButton("搜索", self)
+        self.search_button.setStyleSheet("background:red; color:white;")
         self.search_button.setFixedSize(60, 30)
         self.search_button.clicked.connect(self.reload_data)
+        self.search_button.setVisible(False)
         top_layout.addWidget(self.search_button)
                 
         self.layout.addLayout(top_layout)
@@ -104,7 +113,7 @@ class HomePage(ListPage):
         return [CustomWidget(m) for m in self.albums]
 
     def list_page_item_selected(self, item, index):
-        detail_page = DetailPage(self.albums[index])
+        detail_page = DetailPage(self.albums[index], self.engine)
         self.push(detail_page)
 
     def showEvent(self, event):

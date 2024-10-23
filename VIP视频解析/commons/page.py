@@ -47,11 +47,10 @@ class ListPage(Page):
 
         # 自定义样式
         self.list_widget.setStyleSheet("""
+            /* 
             QListWidget {
                 background-color: #F0F0F0;
-                border: 1px solid #C0C0C0;
             }
-            /* 
             QListWidget::item {
                 height: 40px;  设置每个项的高度
             } */

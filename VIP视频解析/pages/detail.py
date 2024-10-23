@@ -1,6 +1,6 @@
 
 from commons.image_label import ClickableLabel, ImageLabel
-from engine import Album, EngineWKVip
+from engine import *
 from commons.page import *
 from PySide6.QtCore import Qt
 from commons.FlowLayout import FlowLayout
@@ -9,7 +9,7 @@ kImageHeight = 300
 kImageWidth = 200
 
 class DetailPage(Page):
-    def __init__(self, album: Album):
+    def __init__(self, album: Album, engine: Engine):
         super().__init__()
 
         self.title = album.title
@@ -33,12 +33,12 @@ class DetailPage(Page):
         self.page_numbers_layout = FlowLayout(margin=5, spacing=5)
         self.layout.addLayout(self.page_numbers_layout)
         
-        album = EngineWKVip().get_album_detail(album)
+        album = engine.get_album_detail(album)
         self.build_page_numbers_layout(album)
 
         image_label.load_image_from_url(album.img)
         
-        text = f"<b>{album.title}</b><br> {album.source}, 共{album.nums}集"
+        text = f"<b>{album.title}</b><br> {album.source}, 更新时间:{album.date}"
         text_label.setText(text)
 
 

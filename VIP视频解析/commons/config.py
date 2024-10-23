@@ -23,7 +23,7 @@ class Config:
     def save_search_history(self, history):
         self.cache.set('search_history', history, expire=3600*24*30*6)  # 设为None，永不过期
 
-    def get_reponse_data(self, url):
+    def get_reponse_json(self, url):
         try:
             response = requests.get(url)
             response.raise_for_status()
@@ -48,6 +48,6 @@ class Config:
         # # 获取35天前的日期
         # start_date = (datetime.today() - timedelta(days=50)).strftime('%Y%m%d')
 
-        data = self.get_reponse_data(url)
+        data = self.get_reponse_json(url)
         self.cache.set(url, data, expire=expire)
         return data
