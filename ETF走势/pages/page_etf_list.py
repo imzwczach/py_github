@@ -2,6 +2,7 @@
 from commons.page import *
 from models import ETFModel
 from appdata import AppData
+from pages.page_etf_detail import ETFDetailPage
 
 class CustomWidget(QWidget):
     def __init__(self, model:ETFModel):
@@ -33,7 +34,7 @@ class ETFListPage(ListPage):
         super().__init__()
         self.title = 'ETF列表'
         self.setStyleSheet("background:#dddddd;padding:5px;")
-        self.itemHeight = 50
+        self.itemHeight = 80
         self.set_delegate(self)
         self.etf_models = None
 
@@ -42,15 +43,18 @@ class ETFListPage(ListPage):
         self.etf_models = []
         for etf in etfs:
             etf_model = ETFModel(**etf)
-            self.etf_models.append(etf_model)
+            if etf_model.distance_mid > 0:
+                self.etf_models.append(etf_model)
 
         self.etf_models = sorted(self.etf_models, key=lambda obj: -obj.k_slope)
+
+        AppData().get_etfs_realtime_data(self.etf_models)
 
         return [CustomWidget(m) for m in self.etf_models]
 
     def list_page_item_selected(self, item, index):
-        # detail_page = DetailPage(self.albums[index], self.engine)
-        # self.push(detail_page)
+        detail_page = ETFDetailPage(self.etf_models[index])
+        self.push(detail_page)
         pass
 
     def showEvent(self, event):

@@ -6,7 +6,7 @@ class ETFModel:
     def __init__(self, **kwargs):
         # self.__dict__.update(kwargs)
         self.name = kwargs.get('name', None)
-        self.code = kwargs.get('code', None)
+        self.code = kwargs.get('code', None).upper()
                 
         flag = '1' if self.code.lower().startswith('sh') else '0'
         self.nid = f"{flag}.{self.code[2:]}"
@@ -14,10 +14,10 @@ class ETFModel:
         symbol = re.findall(r'\d+', self.code)[0]
         etf_data = AppData().get_etf_data(symbol)
         if etf_data.empty:
-            print("No data available for the given date range.")
+            print(f"{self.code} No data available for the given date range.")
         else:
             lastest = etf_data.iloc[-1]
-            self.day_growth = lastest['涨跌幅']
+            # self.day_growth = lastest['涨跌幅']
             self.date = lastest['日期']
 
             self.etf_data = calculate_bollinger_bands(etf_data)

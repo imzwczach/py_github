@@ -18,13 +18,8 @@ class ClickableLabel(QLabel):
 
 class ImageLabel(ClickableLabel):
 
-    def __init__(self, url=None, size=None):
+    def __init__(self, url=None):
         super().__init__()
-
-        if not size:
-            size = (100, 100)
-        self.setFixedSize(size[0], size[1])
-
         # 下载并设置图片
         if url:
             self.load_image_from_url(url)

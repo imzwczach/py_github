@@ -39,7 +39,7 @@ class ListPage(Page):
         super().__init__(title)
         self.__delegate = None
         self.__items = []
-        self.itemHeight = 30
+        self.itemHeight = 40
 
         # 创建一个 QListWidget 并添加到布局中
         self.list_widget = QListWidget(self)

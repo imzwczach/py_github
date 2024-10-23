@@ -8,13 +8,13 @@ class App(QWidget):
         super().__init__()
 
         # 设置窗口标题和大小
-        self.setWindowTitle("VIP视频解析")
+        self.setWindowTitle("ETF走势")
         self.resize(420, 800)
 
         home_page = ETFListPage()
         self.nav_controller1 = NavigationController(home_page)
         self.setLayout(self.nav_controller1.layout)
-        
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

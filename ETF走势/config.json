@@ -1,6 +1,5 @@
 {
     "etfs": [
-      {"name": "上证50ETF", "code":"sh510050"},
       {"name": "沪深300ETF", "code":"sh510300"},
       {"name": "中证500ETF", "code":"sh510500"},
       {"name": "中证白酒", "code":"SZ399997"},
@@ -8,6 +7,22 @@
       {"name":"大数据ETF", "code":"SH515400"},
       {"name": "消费电子ETF", "code":"SH561600"},
       {"name": "建材ETF", "code":"SZ159745"},
+      {"name": "光伏ETF", "code":"sh515790"},
+      {"name": "国防ETF", "code":"sh512670"},
+      {"name": "恒生科技ETF", "code":"sh513260"},
+      {"name": "电池50ETF", "code":"SZ159796"},
+      {"name": "新材料ETF", "code":"SH516360"},
+      {"name": "游戏动漫ETF", "code":"sh516770"},
+      {"name": "5G通信ETF", "code":"sh515050"},
+      {"name": "芯片50ETF", "code":"sh516920"},
+      {"name": "半导体ETF", "code":"sh512480"},
+      {"name": "中药ETF", "code":"sh562390"},
+      {"name": "AI人工智能ETF", "code":"sh515070"},
+      {"name": "养殖ETF", "code":"SZ159865"},
+      {"name": "创新药ETF", "code":"SH515120"},
+      {"name": "银行ETF", "code":"SZ159887"},
+      {"name": "黄金ETF", "code":"SZ159934"},
+      {"name": "软件ETF", "code":"SH515230"},
       {"name": "豆粕ETF", "code":"sz159985"}
     ]
 }
