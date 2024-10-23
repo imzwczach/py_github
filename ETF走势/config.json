@@ -1,0 +1,13 @@
+{
+    "etfs": [
+      {"name": "上证50ETF", "code":"sh510050"},
+      {"name": "沪深300ETF", "code":"sh510300"},
+      {"name": "中证500ETF", "code":"sh510500"},
+      {"name": "中证白酒", "code":"SZ399997"},
+      {"name":"医疗ETF", "code":"SH512170"},
+      {"name":"大数据ETF", "code":"SH515400"},
+      {"name": "消费电子ETF", "code":"SH561600"},
+      {"name": "建材ETF", "code":"SZ159745"},
+      {"name": "豆粕ETF", "code":"sz159985"}
+    ]
+}
