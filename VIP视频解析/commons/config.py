@@ -20,26 +20,29 @@ class Config:
 
             self.search_history = self.cache['search_history'] if 'search_history' in self.cache else []
 
+            try:
+                with open('configs.json', 'r', encoding='utf-8') as file:
+                    data = json.load(file)
+                    self.engines = data['engines']
+            except FileNotFoundError:
+                print("配置文件未找到。")
+                self.engines = []
+            except json.JSONDecodeError:
+                print("配置文件格式错误。")
+                self.engines = []
+
     def save_search_history(self, history):
         self.cache.set('search_history', history, expire=3600*24*30*6)  # 设为None，永不过期
 
-    def get_reponse_json(self, url):
-        try:
-            response = requests.get(url)
-            response.raise_for_status()
-            data = response.json()  # 解析为 JSON 数据
-            return data
-        except Exception as e:
-            raise Exception(f'请求{url},发生错误:{e}')
-
-    def request_data(self, url, expire=60):
+    def request_data(self, url, type='json', key=None, expire=60):
 
         # 首先检查缓存中是否存在该 symbol 的数据
-        if url in self.cache:
-            # print("Fetching from cache.. " + symbol)
-            return self.cache[url]
+        key = key or url
+        if key in self.cache:
+            # print("Fetching from cache.. " + key)
+            return self.cache[key]
         
-        print(f'request {url}')
+        # print(f'request {url}')
 
         # from datetime import datetime, timedelta
 
@@ -48,6 +51,21 @@ class Config:
         # # 获取35天前的日期
         # start_date = (datetime.today() - timedelta(days=50)).strftime('%Y%m%d')
 
-        data = self.get_reponse_json(url)
-        self.cache.set(url, data, expire=expire)
-        return data
+        data = None
+        try:
+            headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36 Edg/130.0.0.0'}
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()
+            response.encoding = 'utf-8'
+            if type=='json':
+                data = response.json()
+            elif type == 'content':
+                data = response.content
+            elif type == 'text':
+                data = response.text
+
+            self.cache.set(key, data, expire=expire)
+            return data
+        
+        except Exception as e:
+            raise Exception(f'请求{url},发生错误:{e}')

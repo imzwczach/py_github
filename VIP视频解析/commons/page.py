@@ -186,4 +186,71 @@ class NavigationController(QWidget):
 
             # 如果返回到根页面，隐藏返回按钮
             self.nav_bar.show_back_button(len(self.page_stack) > 1)
+
+class GridPageDelegate:
+    def cols_for_grid_page(self):
+        return 3
+    def grid_item_selected(self, item:QWidget, index):
+        pass
+    def grid_page_items(self):
+        pass
+    def grid_item_size(self):
+        return QSize(100, 150)
+
+class GridPage(Page):
+    def __init__(self, title=None):
+        super().__init__(title)
+        self.__delegate = None
+        self.itemHeight = 50
+
+        # 创建滚动区域
+        scroll_area = QScrollArea(self)
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        # 创建内部部件和网格布局
+        inner_widget = QWidget()
+        self.grid_layout = QGridLayout(inner_widget)
+        # 将内部部件设置到滚动区域
+        scroll_area.setWidget(inner_widget)
+
+        self.layout.addWidget(scroll_area)
+    
+    def set_delegate(self, delegate: GridPageDelegate):
+        self.__delegate = delegate
+
+    def add_items(self, items):
+        # self.__items = items
+
+        cols = self.__delegate.cols_for_grid_page()
+        size = self.__delegate.grid_item_size()
+        size_policy = QSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+
+        for idx, itm in enumerate(items):
+            r = int(idx / cols)
+            c = idx % cols
+            if isinstance(itm, QWidget):
+                self.grid_layout.addWidget(itm, r, c)
+                # 设置按钮的固定尺寸
+                itm.setSizePolicy(size_policy)
+                itm.setFixedSize(size)
+                itm.mousePressEvent = lambda event, w=itm, index=idx: self.on_item_click(w, index) if event.button() == Qt.LeftButton else None
+
+    def on_item_click(self, item, index):
+        if self.__delegate and hasattr(self.__delegate, 'grid_item_selected'):
+            self.__delegate.grid_item_selected(item, index)
+
+    def reload_data(self):
+        if self.__delegate and hasattr(self.__delegate, 'grid_page_items'):
+            self._remove_all_widgets(self.grid_layout)
+            self.add_items(self.__delegate.grid_page_items())
+
+    def _remove_all_widgets(self, layout):
+        while layout.count():
+            item = layout.takeAt(0)
+            widget = item.widget()
+            if widget:
+                widget.deleteLater()
+
+
+
     

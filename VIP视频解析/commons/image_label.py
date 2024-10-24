@@ -4,6 +4,8 @@ from PySide6.QtGui import QPixmap
 from PySide6.QtCore import *
 from io import BytesIO
 
+from commons.config import Config
+
 class ClickableLabel(QLabel):
     """可点击的标签类"""
     clicked = Signal(object)  # 自定义信号
@@ -16,14 +18,24 @@ class ClickableLabel(QLabel):
             self.clicked.emit(self)  # 触发点击信号
         super().mousePressEvent(event)
 
+class ImageDownloadThread(QThread):
+    imageDownloaded = Signal(bytes)
+    
+    def __init__(self, url):
+        super().__init__()
+        self.url = url
+
+    def run(self):
+        try:
+            content = Config().request_data(self.url, type='content', expire=None)
+            self.imageDownloaded.emit(content)
+        except requests.exceptions.RequestException as e:
+            self.imageDownloaded.emit(None)
+
 class ImageLabel(ClickableLabel):
 
-    def __init__(self, url=None, size=None):
+    def __init__(self, url=None):
         super().__init__()
-
-        if not size:
-            size = (100, 100)
-        self.setFixedSize(size[0], size[1])
 
         # 下载并设置图片
         if url:
@@ -38,28 +50,24 @@ class ImageLabel(ClickableLabel):
             self.setAlignment(Qt.AlignCenter)
 
     def load_image_from_url(self, url):
-        try:
-            response = requests.get(url)  # 从URL获取图片
-            response.raise_for_status()  # 检查请求是否成功
-            image = QPixmap()
-            image.loadFromData(BytesIO(response.content).read())  # 加载图片数据
+       if url:
+            self.clear()
+            self.download_thread = ImageDownloadThread(url)
+            self.download_thread.imageDownloaded.connect(self.handle_downloaded_image)
+            self.download_thread.start()
 
-            # 清除旧的Pixmap，设置新的Pixmap
-            if not image.isNull():
-                self.clear()  # 清除旧图像
-
-                # 获取 QLabel 的尺寸，等比例缩放图片
-                scaled_image = image.scaled(self.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation)
-                # 设置缩放后的图片
-                self.setPixmap(scaled_image)
-                # 居中对齐
-                self.setAlignment(Qt.AlignCenter)
-
-            else:
-                self.setText("Failed to load image")
-
-        except requests.exceptions.RequestException as e:
-            self.setText(f"Failed to load image")
+    def handle_downloaded_image(self, content):
+       if content:
+           image = QPixmap()
+           image.loadFromData(BytesIO(content).read())
+           if not image.isNull():
+               scaled_image = image.scaled(self.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation)
+               self.setPixmap(scaled_image)
+               self.setAlignment(Qt.AlignCenter)
+           else:
+               self.setText("Failed to load image")
+       else:
+           self.setText("Failed to load image")
 
     def resizeEvent(self, event):
         # 在窗口大小改变时重新缩放图片
@@ -69,3 +77,8 @@ class ImageLabel(ClickableLabel):
 
         # 保持父类的事件处理
         super().resizeEvent(event)
+
+    def __del__(self):
+        if self.download_thread.isRunning():
+            self.download_thread.quit()
+            self.download_thread.wait()

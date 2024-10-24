@@ -1,113 +1,100 @@
 
-import datetime
+from PySide6.QtWidgets import QWidget
 from commons.config import Config
 from commons.image_label import ClickableLabel, ImageLabel
 from engine import *
 from commons.page import *
 from pages.detail import DetailPage
-from PySide6.QtWidgets import QCompleter
+from pages.search import SearchPage
+from pages.widgets import CustomWidget, GridWidget
 
-kImageHeight = 80
-kImageWidth = 70
-
-class CustomWidget(QWidget):
-    def __init__(self, album:Album):
-        super().__init__()
-
-        self.album = album
-
-        # self.content_layout = QVBoxLayout()
-        # # 创建一个水平布局，用于图片和文本标签的组合
-        hbox = QHBoxLayout()
-
-        # # 创建图片标签 (这里可以设置为真实图片)
-        # image_label = ImageLabel(size=(kImageWidth, kImageHeight))
-        # # 将 album 数据绑定到 QLabel 的属性中
-        # image_label.setProperty("id", album.id)
-        # hbox.addWidget(image_label)
-
-        # 创建文本标签，显示 item 中的某个字段
-        text = f"<b>{album.title}</b>&emsp;&emsp; <span style='font-size:12px;'>{album.source}</span>"
-        text_label = QLabel(text) 
-        hbox.addWidget(text_label)
-
-        if album.date:
-            today_str = datetime.datetime.now().strftime("%Y-%m-%d")
-            color = 'red' if today_str in album.date else 'gray'
-            date_label = QLabel(f"<span style='font-size:12px; color:{color};'>{album.date}</span>")
-            date_label.setAlignment(Qt.AlignRight)
-            hbox.addWidget(date_label)
-
-        self.setLayout(hbox)
-    
-    def title(self):
-        return self.album.title
-
-class HomePage(ListPage):
+class HomePage(Page, ListPageDelegate, GridPageDelegate):
     def __init__(self, title):
         super().__init__(title)
-
-        self.engine = EngineMoDu()
-
+        
         top_layout = QHBoxLayout()
         
         self.combo_box = QComboBox(self)
         self.combo_box.setFixedHeight(30)
-        self.combo_box.addItem("魔都动漫")
-        self.combo_box.addItem("我看VIP")
+        
+        self.engines = []
+        for conf in Config().engines:
+            if 'search' in conf and conf['search']:
+                pass
+            else:
+                self.combo_box.addItem(conf['name'])
+
+                cls = globals().get(conf['cls'])
+                if cls is Engine or issubclass(cls, Engine):
+                    engine = cls(conf)
+                    self.engines.append(engine)
+        self.engine = self.engines[0]
+
         top_layout.addWidget(self.combo_box)
         self.combo_box.currentIndexChanged.connect(self.engine_changed_index)
         
-        # 搜索输入框 (QComboBox)
-        self.search_box = QComboBox(self)
-        self.search_box.setEditable(True)  # 设置可编辑
-        self.search_box.setFixedHeight(30)
-        self.search_box.setVisible(False)
-        top_layout.addWidget(self.search_box)
-
         # 搜索按钮
         self.search_button = QPushButton("搜索", self)
         self.search_button.setStyleSheet("background:red; color:white;")
         self.search_button.setFixedSize(60, 30)
-        self.search_button.clicked.connect(self.reload_data)
-        self.search_button.setVisible(False)
+        self.search_button.clicked.connect(self.on_search)
         top_layout.addWidget(self.search_button)
-                
-        self.layout.addLayout(top_layout)
-        
-        self.setStyleSheet("background:#dddddd;padding:5px;")
-        self.itemHeight = 50
-        self.set_delegate(self)
-        self.albums = None
 
-        # 历史记录
-        self.history = Config().search_history
-        self.update_completer()  # 初始化自动完成器
-    
+        self.layout.addLayout(top_layout)
+
+        self.listPage = ListPage()
+        self.listPage.set_delegate(self)
+        self.listPage.itemHeight = 100 if self.engine.has_thumb else 50
+        self.layout.addWidget(self.listPage)
+
+        self.gridPage = GridPage()
+        self.gridPage.set_delegate(self)
+        self.gridPage.itemHeight = 100 if self.engine.has_thumb else 50
+        self.layout.addWidget(self.gridPage)
+
+        if not self.engine.grid:
+            # self.layout.addWidget(self.listPage)
+            self.gridPage.setVisible(False)
+            self.curPage = self.listPage
+        else:
+            # self.layout.addWidget(self.gridPage)
+            self.listPage.setVisible(False)
+            self.curPage = self.gridPage
+
+        hhbox = QHBoxLayout()
+        prev_button = QPushButton('上一页')
+        prev_button.setEnabled(False)
+        prev_button.clicked.connect(self.on_prev_page_button)
+        hhbox.addWidget(prev_button)
+        self.pre_button = prev_button
+        
+        next_button = QPushButton('下一页')
+        next_button.clicked.connect(self.on_next_page_button)
+        hhbox.addWidget(next_button)
+        self.layout.addLayout(hhbox)
+        self.pageIndex = 1
+
     def engine_changed_index(self, index):
-        if index == 0:
-            self.engine = EngineMoDu()
-            self.search_box.setVisible(False)
-            self.search_button.setVisible(False)
-        elif index == 1:
-            self.engine = EngineWKVip()
-            self.search_box.setVisible(True)
-            self.search_button.setVisible(True)
+        self.engine = self.engines[index]
+        page = None
+        if self.engine.grid:
+            page = self.gridPage
+        else:
+            page = self.listPage
+
+        if page is not self.curPage:
+            # self.layout.removeWidget(self.curPage)
+            self.curPage.setVisible(False)
+            page.setVisible(True)
+            # self.layout.addWidget(page)
+            self.curPage = page
+
+        page.itemHeight = 100 if self.engine.has_thumb else 50
         self.reload_data()
 
     def reload_data(self):
-
-        search_text = self.search_box.currentText()
-        self.albums = self.engine.get_albums(search_text)
-
-        # 更新历史记录
-        search_text = self.search_box.currentText()
-        if search_text and search_text not in self.history:
-            self.history.append(search_text)
-            Config().save_search_history(self.history)  # 保存历史记录到文件
-            self.update_completer()  # 更新自动完成器
-
-        super().reload_data()
+        self.albums = self.engine.get_albums(page=self.pageIndex)
+        self.curPage.reload_data()
 
     def list_page_items(self, list_widget):
         return [CustomWidget(m) for m in self.albums]
@@ -116,15 +103,33 @@ class HomePage(ListPage):
         detail_page = DetailPage(self.albums[index], self.engine)
         self.push(detail_page)
 
+    def cols_for_grid_page(self):
+        return 3
+    
+    def grid_item_size(self):
+        return QSize(120, 150)
+
+    def grid_page_items(self):
+        return [GridWidget(m) for m in self.albums]
+    
+    def grid_item_selected(self, item: QWidget, index):
+        album = self.albums[index]
+        vc = SearchPage(album.title)
+        self.push(vc)
+
     def showEvent(self, event):
         self.reload_data()
 
-    def update_completer(self):
-        # 更新 QCompleter，用于实时提示用户输入的匹配历史记录
-        completer = QCompleter(self.history, self)
-        completer.setCompletionMode(QCompleter.PopupCompletion)
-        self.search_box.setCompleter(completer)
+    def on_search(self):
+        vc = SearchPage()
+        self.push(vc)
 
-        # 更新 QComboBox 的选项
-        self.search_box.clear()
-        self.search_box.addItems(self.history)
+    def on_prev_page_button(self):
+        self.pageIndex = max(1, self.pageIndex-1)            
+        self.pre_button.setEnabled(self.pageIndex>1)
+        self.reload_data()
+
+    def on_next_page_button(self):
+        self.pageIndex += 1
+        self.pre_button.setEnabled(True)
+        self.reload_data()
