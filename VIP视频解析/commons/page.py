@@ -13,8 +13,8 @@ class Page(QWidget):
 
         # 创建垂直布局
         self.layout = QVBoxLayout(self)
-        self.layout.setSpacing(0)  # 控件间距为 0
-        self.layout.setContentsMargins(0, 0, 0, 0)  # 去除边距
+        # self.layout.setSpacing(0)  # 控件间距为 0
+        # self.layout.setContentsMargins(0, 0, 0, 0)  # 去除边距
 
     def push(self, page):
         if self.navigation_controller and page:
@@ -44,7 +44,6 @@ class ListPage(Page):
         # 创建一个 QListWidget 并添加到布局中
         self.list_widget = QListWidget(self)
         self.layout.addWidget(self.list_widget)
-
         # 自定义样式
         self.list_widget.setStyleSheet("""
             /* 

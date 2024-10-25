@@ -2,7 +2,7 @@ from commons.config import Config
 from engine import *
 from commons.page import *
 from pages.detail import DetailPage
-from PySide6.QtWidgets import QCompleter
+from PySide6.QtWidgets import QCompleter, QLayout
 
 from pages.widgets import CustomWidget
 
@@ -16,7 +16,7 @@ class SearchPage(ListPage):
         
         self.combo_box = QComboBox(self)
         self.combo_box.setFixedHeight(30)
-
+        
         self.engines = []
         for conf in Config().engines:
             if 'search' in conf and conf['search']:
@@ -35,7 +35,7 @@ class SearchPage(ListPage):
         # 搜索输入框 (QComboBox)
         self.search_box = QComboBox(self)
         self.search_box.setEditable(True)  # 设置可编辑
-        self.search_box.setFixedHeight(30)
+        self.search_box.setFixedSize(150,30)
         top_layout.addWidget(self.search_box)
 
         # 搜索按钮
@@ -49,7 +49,7 @@ class SearchPage(ListPage):
         
         self.itemHeight = 100 if self.engine.has_thumb else 50
         self.set_delegate(self)
-        self.albums = None
+        self.albums = []
         
         # 历史记录
         self.history = Config().search_history
@@ -73,16 +73,21 @@ class SearchPage(ListPage):
                 for album in albums:
                     if not any(ignore in album.title for ignore in ignores):
                         self.albums.append(album)
+                
+                # 更新历史记录
+                search_text = self.search_box.currentText()
+                if search_text and search_text not in self.history:
+                    self.history.append(search_text)
+                    Config().save_search_history(self.history)  # 保存历史记录到文件
 
             except Exception as e:
-                print(e)
-
-            # 更新历史记录
-            search_text = self.search_box.currentText()
-            if search_text and search_text not in self.history:
-                self.history.append(search_text)
-                Config().save_search_history(self.history)  # 保存历史记录到文件
-
+                print(f'错误{e}')
+                msg_box = QMessageBox()
+                msg_box.setText(f"错误：{e}")
+                msg_box.setWindowTitle("发生错误")
+                msg_box.setIcon(QMessageBox.Information)
+                msg_box.exec()
+                return
             super().reload_data()
 
     def list_page_items(self, list_widget):

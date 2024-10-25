@@ -2,7 +2,7 @@
     "engines":[
         {"name": "bangumi.tv", "cls": "EngineBanguMi", "show": true, "thumb": true, "grid":true},
         {"name": "魔都动漫", "cls": "EngineMoDu", "show": true},
-        {"name": "我看VIP", "cls": "EngineWKVip", "search": true, "thumb": false},
-        {"name": "美益达影视", "cls": "EngineMeYiDa", "show": true}
+        {"name": "video.isyour.love", "cls": "EngineVideoLove", "search":true},
+        {"name": "我看VIP", "cls": "EngineWKVip", "search": true, "thumb": false}
     ]
 }

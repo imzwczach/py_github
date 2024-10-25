@@ -51,10 +51,13 @@ class ImageLabel(ClickableLabel):
 
     def load_image_from_url(self, url):
        if url:
-            self.clear()
-            self.download_thread = ImageDownloadThread(url)
-            self.download_thread.imageDownloaded.connect(self.handle_downloaded_image)
-            self.download_thread.start()
+            try:
+                self.clear()
+                self.download_thread = ImageDownloadThread(url)
+                self.download_thread.imageDownloaded.connect(self.handle_downloaded_image)
+                self.download_thread.start()
+            except:
+                pass
 
     def handle_downloaded_image(self, content):
        if content:
@@ -78,7 +81,8 @@ class ImageLabel(ClickableLabel):
         # 保持父类的事件处理
         super().resizeEvent(event)
 
-    def __del__(self):
+    def closeEvent(self, event):
         if self.download_thread.isRunning():
             self.download_thread.quit()
             self.download_thread.wait()
+        super().closeEvent(event)

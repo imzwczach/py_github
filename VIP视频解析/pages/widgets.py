@@ -27,6 +27,8 @@ class CustomWidget(QWidget):
             text += f"&emsp;<span style='font-size:12px;color:red;'><b>{album.score}</b></span>"
         if album.source:
             text += f"&emsp; <span style='font-size:12px;'>{album.source}</span>"
+        if album.nums:
+            text += f"&emsp; <span style='font-size:12px;color:blue;'>{album.nums}集</span>"
         if album.update:
             text += f"&emsp; <span style='font-size:12px;'>{album.update}</span>"
         text_label = QLabel(text) 
@@ -37,6 +39,7 @@ class CustomWidget(QWidget):
             color = 'red' if today_str in album.date else 'gray'
             date_label = QLabel(f"<span style='font-size:12px; color:{color};'>{album.date}</span>")
             date_label.setAlignment(Qt.AlignRight)
+            date_label.setMaximumWidth(100)
             hbox.addWidget(date_label)
 
         self.setLayout(hbox)

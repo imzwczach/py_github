@@ -20,6 +20,10 @@ class Config:
 
             self.search_history = self.cache['search_history'] if 'search_history' in self.cache else []
 
+            import platform
+            current_system = platform.system()
+            self.isPC = (current_system == "Windows" or current_system == "Linux" or current_system == "Darwin")
+
             try:
                 with open('configs.json', 'r', encoding='utf-8') as file:
                     data = json.load(file)
@@ -31,10 +35,12 @@ class Config:
                 print("配置文件格式错误。")
                 self.engines = []
 
+            self.loadScripts()
+
     def save_search_history(self, history):
         self.cache.set('search_history', history, expire=3600*24*30*6)  # 设为None，永不过期
 
-    def request_data(self, url, type='json', key=None, expire=60):
+    def request_data(self, url, type='json', headers=None, key=None, expire=60):
 
         # 首先检查缓存中是否存在该 symbol 的数据
         key = key or url
@@ -53,8 +59,10 @@ class Config:
 
         data = None
         try:
-            headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36 Edg/130.0.0.0'}
-            response = requests.get(url, headers=headers)
+            headers_ = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36 Edg/130.0.0.0'}
+            if headers:
+                headers_.update(headers)
+            response = requests.get(url, headers=headers_)
             response.raise_for_status()
             response.encoding = 'utf-8'
             if type=='json':
@@ -69,3 +77,11 @@ class Config:
         
         except Exception as e:
             raise Exception(f'请求{url},发生错误:{e}')
+    
+
+    def loadScripts(self):
+        import execjs
+        with open('engine_video_isyour_love.js', 'r', encoding='utf-8') as file:
+            js_content = file.read()
+            # 使用execjs编译包含函数的JavaScript代码
+            self.ctx = execjs.compile(js_content)

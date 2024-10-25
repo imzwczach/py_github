@@ -55,7 +55,7 @@ class Engine(QObject):
         except Exception as e:
             raise Exception(f'请求{url},发生错误:{e}')
 
-    def request_album_url(self, keyword):
+    def request_album_url(self, keyword=None):
         pass
 
     def get_albums(self, page=None):
@@ -100,6 +100,39 @@ class EngineWKVip(Engine):
                     arr.append({'title': parts[0], 'url': parts[1]})
             album.videos = arr
         return album
+
+import execjs
+class EngineVideoLove(Engine):
+    def search_albums(self, keyword, page=1):
+        try:
+            # 尝试调用在js文件中定义的函数
+            res = Config().ctx.call('getargs')
+
+            parts = res.split('|')
+            tt = parts[0]
+            kk = parts[1]
+            token = parts[2]
+            
+            data_list =  Config().request_data(f"https://video.isyour.love/player/getSource?name={keyword}&pg={page}", 
+                                                type="json", 
+                                                headers={'token': token, 't': tt, 'k': kk},
+                                                expire=3600*6)
+            albums = []
+            for item in data_list:
+                album = Album(title=item['Name'], img=item['Img'])
+                album.date = item['lastUpDate']
+                album.desc = item['Describe']
+                album.source = item['TypeId']
+                album.videos = [{'title': itm['N'], 'url':itm['S']} for itm in item['Data']]
+                album.nums = len(album.videos)
+                albums.append(album)
+            return albums
+        except execjs._exceptions.ProgramError as e:
+            raise Exception(f"执行函数出错:{e}")
+        
+    def get_album_detail(self, album):
+        return album        
+
 
 # https://moduzy1.com/list1/
 class EngineMoDu(Engine):
@@ -164,45 +197,3 @@ class EngineBanguMi(Engine):
             albums.append(album)
         return albums
 
-class EngineMeYiDa(Engine):
-
-    def request_album_url(self, keyword=None):
-        if keyword:
-            return f"https://meiyd11.com/vodsearch/{keyword}-------------.html"
-        return "https://meiyd11.com/vodshow/4-%E5%A4%A7%E9%99%86-time---------.html"
-
-    def get_albums(self, keyword):
-        text = self.get_reponse_text(self.request_album_url())
-
-        albums = []
-
-        # 使用 xpath 提取元素
-        selector = parsel.Selector(text)
-        links = selector.xpath("//div[@class='module']/a")
-        for el in links:
-            title = el.xpath("@title").getall()[0]
-            update = el.xpath("//div[@class='module-item-note']/text()").getall()[0]
-            url = "https://meiyd11.com" + el.xpath("@href").getall()[0]
-            img = el.xpath("//img/@data-original").getall()[0]
-            album = Album(title=title, url=url, img=img)
-            album.update = update
-            albums.append(album)
-        return albums
-        
-    def get_album_detail(self, album):
-        text = self.get_reponse_text(album.url)
-
-        # 使用 xpath 提取元素
-        selector = parsel.Selector(text)
-        links = selector.xpath("//div[@id='panel1'][1]//a") # 只取第一个线路
-        # xianlu_list = selector.xpath("//div[@id='y-playList']//span/text()").getall()
-        # print(xianlu_list)
-        xl_list = []
-        for el in links:
-            href = "https://meiyd11.com"+ el.xpath("@href").getall()[0]
-            title = el.xpath(".//span").getall()[0]
-            xl_list.append({'title': title, 'url': href})
-
-        album.videos = xl_list
-
-        return album
