@@ -1,8 +1,10 @@
 {
     "engines":[
-        {"name": "bangumi.tv", "cls": "EngineBanguMi", "show": true, "thumb": true, "grid":true},
-        {"name": "魔都动漫", "cls": "EngineMoDu", "show": true, "ban_ads": true},
-        {"name": "video.isyour.love", "cls": "EngineVideoLove", "search":true},
-        {"name": "我看VIP", "cls": "EngineWKVip", "search": true, "thumb": false}
+        {"name": "douban动画", "cls": "EngineDouban","thumb":true, "grid":true, "need_search":true},
+        {"name": "bangumi.tv", "cls": "EngineBanguMi","thumb": true, "grid":true, "need_search":true},
+        {"name": "魔都动漫", "cls": "EngineMoDu","ban_ads": true},
+
+        {"name": "video.isyour.love", "cls": "EngineVideoLove", "is_search":true},
+        {"name": "我看VIP", "cls": "EngineWKVip", "is_search": true}
     ]
 }

@@ -210,6 +210,8 @@ class GridPage(Page):
         scroll_area = QScrollArea(self)
         scroll_area.setWidgetResizable(True)
         scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        scroll_area.setStyleSheet("QScrollBar:vertical {width:20px;}")
+
         # 创建内部部件和网格布局
         inner_widget = QWidget()
         self.grid_layout = QGridLayout(inner_widget)

@@ -34,8 +34,8 @@ class Engine(QObject):
     on_got_album_detail_signal = Signal(object)
 
     def __init__(self, config) -> None:
-        self.isShow = config['show'] if 'show' in config else False
-        self.support_search = config['search'] if 'search' in config else False
+        self.can_show = config['show'] if 'show' in config else False
+        self.need_search = config['need_search'] if 'need_search' in config else False
         self.has_thumb = config['thumb'] if 'thumb' in config else False
         self.grid = config['grid'] if 'grid' in config else False
         self.ban_ads = config['ban_ads'] if 'ban_ads' in config else False
@@ -61,16 +61,13 @@ class Engine(QObject):
         pass
 
     def get_albums(self, page=None):
-        data = Config().request_data(self.request_album_url(page), expire=3600 * 12)
-        return data
+        pass
 
     def search_albums(self, keyword=None):
-        data = Config().request_data(self.request_album_url(keyword), expire=3600 * 12)
-        return data
+        pass
 
     def get_album_detail(self, album):
-        data = Config().request_data(album.url, expire=3600 * 12)
-        return data
+        return album
 
 # https://v.wkvip.net/
 class EngineWKVip(Engine):
@@ -79,7 +76,7 @@ class EngineWKVip(Engine):
         return "https://a.wkvip.net/api.php?tp=jsonp&wd="+keyword
 
     def search_albums(self, keyword):
-        data = super().search_albums(keyword)
+        data = Config().request_data(self.request_album_url(keyword), expire=3600 * 6)
         items = data.get('info', [])
         albums = [
             Album(title=item['title'],
@@ -89,7 +86,7 @@ class EngineWKVip(Engine):
         return albums
         
     def get_album_detail(self, album):
-        data = super().get_album_detail(album)
+        data = Config().request_data(album.url, expire=3600 * 12)
         album.img = data['pic']
         items = data.get('info', [])
         if len(items):
@@ -102,6 +99,23 @@ class EngineWKVip(Engine):
                     arr.append({'title': parts[0], 'url': parts[1]})
             album.videos = arr
         return album
+
+
+class EngineDouban(Engine):
+
+    def request_album_url(self, page):
+        return f"https://movie.douban.com/j/chart/top_list?type=25&interval_id=100%3A90&action=&start={page}&limit=20"
+    
+    def get_albums(self, page=0):
+        items = Config().request_data(self.request_album_url(page), expire=3600 * 24 * 5)
+        albums = []
+        for item in items:
+            album = Album(title=item['title'], img=item['cover_url'])
+            album.score = item['score']
+            album.date = item['release_date']
+            album.desc = ','.join(item['types'])
+            albums.append(album)
+        return albums
 
 import execjs
 class EngineVideoLove(Engine):
@@ -142,10 +156,6 @@ class EngineVideoLove(Engine):
             return albums
         except execjs._exceptions.ProgramError as e:
             raise Exception(f"执行函数出错:{e}")
-
-    def get_album_detail(self, album):
-        return album        
-
 
 # https://moduzy1.com/list1/
 class EngineMoDu(Engine):
@@ -192,10 +202,10 @@ class EngineMoDu(Engine):
 
 class EngineBanguMi(Engine):
 
-    def request_album_url(self, page=1):
-        return f"https://bangumi.tv/anime/browser/?sort=rank&page={page}"
+    def request_album_url(self, page):
+        return f"https://bangumi.tv/anime/browser/?sort=rank&page={page+1}"
     
-    def get_albums(self, page=None):
+    def get_albums(self, page):
         data = Config().request_data(self.request_album_url(page), type='text', expire=3600*24*7)
         # 使用 xpath 提取元素
         selector = parsel.Selector(data)
@@ -209,4 +219,3 @@ class EngineBanguMi(Engine):
             album.score = score
             albums.append(album)
         return albums
-

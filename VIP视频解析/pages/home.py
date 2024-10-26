@@ -19,8 +19,8 @@ class HomePage(Page, ListPageDelegate, GridPageDelegate):
         
         self.engines = []
         for conf in Config().engines:
-            if 'search' in conf and conf['search']:
-                pass
+            if 'is_search' in conf and conf['is_search']:
+                continue
             else:
                 self.combo_box.addItem(conf['name'])
 
@@ -28,6 +28,7 @@ class HomePage(Page, ListPageDelegate, GridPageDelegate):
                 if cls is Engine or issubclass(cls, Engine):
                     engine = cls(conf)
                     self.engines.append(engine)
+
         self.engine = self.engines[0]
 
         top_layout.addWidget(self.combo_box)
@@ -72,7 +73,7 @@ class HomePage(Page, ListPageDelegate, GridPageDelegate):
         next_button.clicked.connect(self.on_next_page_button)
         hhbox.addWidget(next_button)
         self.layout.addLayout(hhbox)
-        self.pageIndex = 1
+        self.pageIndex = 0
 
         self.reload_data()
 
@@ -98,34 +99,44 @@ class HomePage(Page, ListPageDelegate, GridPageDelegate):
         self.albums = self.engine.get_albums(page=self.pageIndex)
         self.curPage.reload_data()
 
-    def list_page_items(self, list_widget):
+    def list_page_items(self, _):
         return [CustomWidget(m) for m in self.albums]
 
     def list_page_item_selected(self, item, index):
-        detail_page = DetailPage(self.albums[index], self.engine)
-        self.push(detail_page)
+        album = self.albums[index]
+        album = self.albums[index]
+        if not self.engine.need_search:
+            vc = DetailPage(album, self.engine)
+            self.push(vc)
+        else:
+            vc = SearchPage(album.title)
+            self.push(vc)
 
     def cols_for_grid_page(self):
         return 3
     
     def grid_item_size(self):
-        return QSize(120, 150)
+        return QSize(120, 170)
 
     def grid_page_items(self):
         return [GridWidget(m) for m in self.albums]
     
-    def grid_item_selected(self, item: QWidget, index):
+    def grid_item_selected(self, _: QWidget, index):
         album = self.albums[index]
-        vc = SearchPage(album.title)
-        self.push(vc)
+        if not self.engine.need_search:
+            vc = DetailPage(album, self.engine)
+            self.push(vc)
+        else:
+            vc = SearchPage(album.title)
+            self.push(vc)
 
     def on_search(self):
         vc = SearchPage()
         self.push(vc)
 
     def on_prev_page_button(self):
-        self.pageIndex = max(1, self.pageIndex-1)            
-        self.pre_button.setEnabled(self.pageIndex>1)
+        self.pageIndex = max(0, self.pageIndex-1)            
+        self.pre_button.setEnabled(self.pageIndex>0)
         self.reload_data()
 
     def on_next_page_button(self):

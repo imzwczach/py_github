@@ -50,6 +50,7 @@ class DetailPage(Page):
         self.scroll_area = QScrollArea(self)
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.scroll_area.setStyleSheet("QScrollBar:vertical {width:20px;}")
         # 创建内部部件和网格布局
         inner_widget = QWidget()
         self.page_numbers_layout = FlowLayout(inner_widget, margin=10, spacing=10)
@@ -76,8 +77,8 @@ class DetailPage(Page):
             self.m3u8_gui.setVisible(False)
             self.layout.addWidget(self.m3u8_gui)
 
-        self.thread = threading.Thread(target=lambda: (time.sleep(0.2), self.test_speed()))
-        self.thread.start()
+        self.test_speed_thread = None
+        self.test_speed()
 
     def build_page_numbers_layout(self, album:Album):
 
@@ -157,40 +158,36 @@ class DetailPage(Page):
     def willDestory(self):
         if self.m3u8_gui.m3u8_downloader:
             self.m3u8_gui.m3u8_downloader.finished.emit()
+        
+        if self.test_speed_thread:
+            self.test_speed_thread.stop()
 
     def test_speed(self):
         from m3u8.m3u8_downloader import M3u8Downloader
         from m3u8.test_speed import TestSpeedThread
+
         self.text = self.text_label.text()
         self.text_label.setText(self.text+"<br><span style='color:red;'>测速: - Mb/s</span>")
-        result = ""
+        inputString = ""
         href = None
         for video in self.album.videos:
             if 'm3u8' in video['url']:
-                result += f"{video['title']}${video['url']}\n"
+                inputString += f"{video['title']}${video['url']}\n"
             else:
                 href = video['url']
         if href:
             self.text_label.setText(self.text + f"<br><span style='color:red;'>无效链接:{href}</span>")
             return
         
-        self.m3u8_downloader = M3u8Downloader(result)
-        m3u8_info = self.m3u8_downloader.m3u8_infos[0]#random.choice(self.m3u8_downloader.m3u8_infos)
-
-        lines = self.m3u8_downloader.get_ts_lines(m3u8_info['url'])
-        urls = []
-        for line in lines:
-            if line.startswith('http'):
-                urls.append(line)
-        if len(urls):
-            self.text_label.setText(self.text+f"<br><span style='color:red;'>切片数:{len(urls)}</span>")
-
-            self.test_speed_thread = TestSpeedThread(urls)
-            self.test_speed_thread.test_speed_done_signal.connect(self.test_speed_done)
-            self.test_speed_thread.start()
-        else:
-            self.text_label.setText(self.text+"<br><span style='color:red;'>失效资源</span>")
+        self.test_speed_thread = TestSpeedThread(inputString)
+        self.test_speed_thread.test_speed_done_signal.connect(self.test_speed_done)
+        self.test_speed_thread.start()
 
     def test_speed_done(self, avg_speed, ts_count, estimate_mb):
-        self.text_label.setText(self.text+f"<br><span style='color:red;'>测速: {avg_speed:.2f} Mb/S, 切片数:{ts_count}, 估算: {estimate_mb/8:.0f}MB</span>")
+        if avg_speed and ts_count and estimate_mb:
+            self.text_label.setText(self.text+f"<br><span style='color:red;'>测速: {avg_speed:.2f} Mb/S, 切片数:{ts_count}, 估算: {estimate_mb/8:.0f}MB</span>")
+        else:
+            self.text_label.setText(self.text+"<br><span style='color:red;'>失效资源</span>")
+        
         self.test_speed_thread.stop()
+        self.test_speed_thread = None

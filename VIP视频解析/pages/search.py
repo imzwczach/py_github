@@ -19,7 +19,7 @@ class SearchPage(ListPage):
         
         self.engines = []
         for conf in Config().engines:
-            if 'search' in conf and conf['search']:
+            if 'is_search' in conf and conf['is_search']:
                 self.combo_box.addItem(conf['name'])
 
                 cls = globals().get(conf['cls'])

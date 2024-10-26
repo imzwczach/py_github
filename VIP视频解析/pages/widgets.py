@@ -59,22 +59,23 @@ class GridWidget(QWidget):
         if album.img:
             # 创建图片标签 (这里可以设置为真实图片)
             image_label = ImageLabel(url=album.img)
-            image_label.setFixedSize(100, 115)
+            image_label.setFixedSize(100, 120)
             # 将 album 数据绑定到 QLabel 的属性中
             # image_label.setProperty("id", album.id)
             layout.addWidget(image_label)
 
         # 创建文本标签，显示 item 中的某个字段
         hhbox = QHBoxLayout()
-        text = f"<span style='font-size:11px;'><b>{album.title}</b></span>"
-        text_label = QLabel(text) 
-        hhbox.addWidget(text_label)
-
+        text = ""
         if album.score:
-            text = f"<span style='font-size:10px;color:red;'><b>{album.score}</b></span>"
-            score_lable = QLabel(text)
-            hhbox.addWidget(score_lable)
+            text += f"<span style='font-size:10px;color:red;'><b>{album.score}</b></span>&nbsp;"
+        if album.title:
+            text += f"<span style='font-size:12px;'><b>{album.title}</b></span>"
+        if album.desc:
+            text += f"<br><span style='font-size:11px; color:gray;'>{album.desc}</span>"
 
+        text_label = QLabel(text)
+        hhbox.addWidget(text_label)
         layout.addLayout(hhbox)
 
         self.setLayout(layout)

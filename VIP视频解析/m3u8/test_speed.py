@@ -4,25 +4,47 @@ import time
 from PySide6.QtCore import QThread, Signal
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+from m3u8.m3u8_downloader import M3u8Downloader
+
 class TestSpeedThread(QThread):
     test_speed_done_signal = Signal(float, int, float)
     
-    def __init__(self, urls):
+    def __init__(self, inputString):
         super().__init__()
-        self.urls_total = len(urls)
-        self.urls = urls if len(urls)<6 else random.sample(urls, 5)
+        self.inputString = inputString
         self._stop_flag = False
 
     def run(self):
         try:
-            average_speed, estimate_total = self.get_download_files_infos(self.urls)
-            self.test_speed_done_signal.emit(average_speed, self.urls_total, estimate_total)
+            self.m3u8_downloader = M3u8Downloader(self.inputString)
+            m3u8_info = self.m3u8_downloader.m3u8_infos[-1]#random.choice(self.m3u8_downloader.m3u8_infos)
+
+            lines = self.m3u8_downloader.get_ts_lines(m3u8_info['url'])
+
+            if self._stop_flag:
+                return
+
+            urls = []
+            for line in lines:
+                if line.startswith('http'):
+                    urls.append(line)
+            if len(urls):
+                self.urls_total = len(urls)
+                self.urls = urls if len(urls)<6 else random.sample(urls, 5)
+
+                average_speed, estimate_total = self.get_download_files_infos(self.urls)
+                self.test_speed_done_signal.emit(average_speed, self.urls_total, estimate_total)
+            else:
+                self.test_speed_done_signal.emit(None, None, None)
+                
         except requests.exceptions.RequestException as e:
             self.test_speed_done_signal.emit(None, self.urls_total, None)
     
     def stop(self):
         self._stop_flag = True
+        self.quit()
         self.wait()
+        self.deleteLater()
 
     def download_file(self, url):
         response = requests.get(url, stream=True, timeout=5)
