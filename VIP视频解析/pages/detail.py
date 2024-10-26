@@ -161,9 +161,8 @@ class DetailPage(Page):
     def test_speed(self):
         from m3u8.m3u8_downloader import M3u8Downloader
         from m3u8.test_speed import TestSpeedThread
-
-        # self.text_label.setText(self.old_text+"<br><span style='color:red;'>测速: - Mb/s</span>")
-        text = self.text_label.text()
+        self.text = self.text_label.text()
+        self.text_label.setText(self.text+"<br><span style='color:red;'>测速: - Mb/s</span>")
         result = ""
         href = None
         for video in self.album.videos:
@@ -172,8 +171,7 @@ class DetailPage(Page):
             else:
                 href = video['url']
         if href:
-            text += f"<br><span style='color:red;'>无效链接:{href}</span>"
-            self.text_label.setText(text)
+            self.text_label.setText(self.text + f"<br><span style='color:red;'>无效链接:{href}</span>")
             return
         
         self.m3u8_downloader = M3u8Downloader(result)
@@ -185,16 +183,14 @@ class DetailPage(Page):
             if line.startswith('http'):
                 urls.append(line)
         if len(urls):
-            text += f"<br><span style='color:red;'>切片数:{len(urls)}</span>"
-            self.text_label.setText(text)
+            self.text_label.setText(self.text+f"<br><span style='color:red;'>切片数:{len(urls)}</span>")
 
-            # self.test_speed_thread = TestSpeedThread(urls)
-            # self.test_speed_thread.test_speed_done_signal.connect(self.test_speed_done)
-            # self.test_speed_thread.start()
+            self.test_speed_thread = TestSpeedThread(urls)
+            self.test_speed_thread.test_speed_done_signal.connect(self.test_speed_done)
+            self.test_speed_thread.start()
         else:
-            text += "<br><span style='color:red;'>失效资源</span>"
-            self.text_label.setText(text)
+            self.text_label.setText(self.text+"<br><span style='color:red;'>失效资源</span>")
 
-    # def test_speed_done(self, avg_speed, ts_count, estimate_mb):
-    #     self.text_label.setText(self.old_text+f"<br><span style='color:red;'>测速: {avg_speed:.2f} Mb/S, 切片数:{ts_count}, 估算: {estimate_mb:.0f}MB</span>")
-    #     self.test_speed_thread.stop()
+    def test_speed_done(self, avg_speed, ts_count, estimate_mb):
+        self.text_label.setText(self.text+f"<br><span style='color:red;'>测速: {avg_speed:.2f} Mb/S, 切片数:{ts_count}, 估算: {estimate_mb/8:.0f}MB</span>")
+        self.test_speed_thread.stop()
