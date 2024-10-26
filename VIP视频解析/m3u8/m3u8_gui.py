@@ -6,7 +6,7 @@ from commons.page import Page
 from m3u8.m3u8_downloader import DownloadState, M3u8Downloader
 
 class M3U8DownloadPage(Page):
-    def __init__(self):
+    def __init__(self, ban_ads=False):
         super().__init__()
 
         self.init_config()
@@ -63,15 +63,20 @@ class M3U8DownloadPage(Page):
         self.progress_bar.setMinimumWidth(300)
         self.progress_bar.setVisible(False)
         layout5.addWidget(self.progress_bar)
-
         self.label_progress = QLabel('0/0')
         self.label_progress.setVisible(False)
         layout5.addWidget(self.label_progress)
+        
+        layout6 = QHBoxLayout()
+        self.lbl_speed = QLabel()
+        self.lbl_speed.setStyleSheet("color:red;")
+        layout6.addWidget(self.lbl_speed)
 
         self.btn_download = QPushButton('开始下载')
+        self.btn_download.setFixedSize(120, 30)
         self.btn_download.clicked.connect(self.start_download)
         self.btn_download.setEnabled(False)
-        layout5.addWidget(self.btn_download)
+        layout6.addWidget(self.btn_download)
 
         # 将所有行添加到主布局中
         self.layout.addLayout(layout1)
@@ -79,19 +84,21 @@ class M3U8DownloadPage(Page):
         self.layout.addLayout(layout3)
         self.layout.addLayout(layout4)
         self.layout.addLayout(layout5)
+        self.layout.addLayout(layout6)
 
         # 初始化 configparser
         import configparser
         self.config = configparser.ConfigParser()
 
         # 读取 ini 文件并设置到第二个文本框
-        self.config.read('m3u8/config.ini')
+        self.config.read('config.ini')
         if 'settings' in self.config and 'save_directory' in self.config['settings']:
             self.input_save.setText(self.config['settings']['save_directory'])
 
         # QThread 实例
         self.thread = None
         self.m3u8_downloader = None
+        self.ban_ads = ban_ads
 
     def init_config(self):
         # 获取 AppData\Roaming 目录
@@ -103,14 +110,12 @@ class M3U8DownloadPage(Page):
             with open(ini_file_path, 'w') as f:
                 f.write(f"[settings]\nsave_directory = {download_dir}")
 
-    # 窗体关闭时，人为处理线程释放
-    def closeEvent(self, event):
+    def willDestory(self):
         # 在关闭窗体时，确保停止线程
         if self.thread and self.thread.isRunning():
             self.m3u8_downloader.cancel() # 取消下载任务
             self.thread.quit()  # 发送退出信号
             self.thread.wait()  # 等待线程结束
-        event.accept()  # 继续关闭事件
 
     def m3u8_text_changed(self):
         if self.input_m3u8.toPlainText().startswith('http'):
@@ -126,7 +131,7 @@ class M3U8DownloadPage(Page):
 
             # 保存选定的目录到 ini 文件
             self.config['settings'] = {'save_directory': directory}
-            with open('m3u8/config.ini', 'w') as configfile:
+            with open('config.ini', 'w') as configfile:
                 self.config.write(configfile)
 
     def start_download(self):
@@ -144,13 +149,17 @@ class M3U8DownloadPage(Page):
             inputString=self.input_m3u8.toPlainText(),
             dir_path=self.input_save.text(),
             head_time=self.time_start.text(),
-            tail_time=self.time_end.text()
+            tail_time=self.time_end.text(),
+            ban_ads=self.ban_ads
         )
         
         if not self.thread:
             # 创建 QThread 实例
             self.thread = QThread()
-        
+            # 在线程开始时，执行 实例 的 run_task 方法
+            self.thread.started.connect(self.m3u8_downloader.download_ts_files)
+            self.thread.finished.connect(self.thread.deleteLater)
+
         # 将 实例 移动到 QThread 中运行
         self.m3u8_downloader.moveToThread(self.thread)
 
@@ -158,11 +167,9 @@ class M3U8DownloadPage(Page):
         self.m3u8_downloader.info_signal.connect(self.update_infos_text)
         self.m3u8_downloader.progress_signal.connect(self.update_progress)
         self.m3u8_downloader.download_state_signal.connect(self.download_state_updated)
+        self.m3u8_downloader.avg_speed_signal.connect(self.update_speed)
+        # 手动关闭线程 接收信号
         self.m3u8_downloader.finished.connect(self.on_m3u8_downloader_finished)
-
-        # 在线程开始时，执行 实例 的 run_task 方法
-        self.thread.started.connect(self.m3u8_downloader.download_ts_files)
-        self.thread.finished.connect(self.thread.deleteLater)
 
         # 启动线程
         self.thread.start()
@@ -173,12 +180,15 @@ class M3U8DownloadPage(Page):
         self.btn_download.setText('暂停')
     
     def on_m3u8_downloader_finished(self):
+        self.m3u8_downloader.cancel()
+        self.m3u8_downloader = None
         self.thread.quit()
         self.thread.wait()
-        self.m3u8_downloader.deleteLater()
+        self.thread = None
 
         self.input_m3u8.setEnabled(True)
         self.btn_download.setText("开始下载")
+        self.btn_download.setEnabled(True)
         self.progress_bar.setValue(0)
         self.label_progress.setText("0/0")
 
@@ -188,6 +198,9 @@ class M3U8DownloadPage(Page):
     def update_progress(self, progress_ext):
         self.progress_bar.setValue(progress_ext['value'])
         self.label_progress.setText(f"{progress_ext['current']}/{progress_ext['total']}")
+
+    def update_speed(self, avg_speed):
+        self.lbl_speed.setText(f"{avg_speed:.2f} Mb/S")
 
     def download_state_updated(self, info:tuple):
         (state, download_dir) = info
@@ -200,24 +213,24 @@ class M3U8DownloadPage(Page):
         elif state == DownloadState.Lost:
             msgBox = QMessageBox()
             msgBox.setWindowTitle("提示")
-            msgBox.setText("部分视频切片下载失败，是否继续合并或者重新下载?")
+            msgBox.setText("部分视频切片下载失败")
 
             # 添加自定义按钮
-            merge_button = msgBox.addButton("合并", QMessageBox.AcceptRole)
-            redownload_button = msgBox.addButton("重新下载", QMessageBox.RejectRole)
+            merge_button = msgBox.addButton("确定", QMessageBox.AcceptRole)
+            # redownload_button = msgBox.addButton("重新下载", QMessageBox.RejectRole)
 
             # 设置默认按钮
-            msgBox.setDefaultButton(redownload_button)
+            msgBox.setDefaultButton(merge_button)
 
             # 显示对话框并捕获用户的选择
             result = msgBox.exec_()
 
             # 判断用户选择了哪个按钮
-            if msgBox.clickedButton() == merge_button:
-                self.m3u8_downloader.process_ffmpeg(download_dir)
-            elif msgBox.clickedButton() == redownload_button:
-                print("用户选择了重新下载")
-                self.start_download()
+            # if msgBox.clickedButton() == merge_button:
+            #     self.m3u8_downloader.process_ffmpeg(download_dir)
+            # elif msgBox.clickedButton() == redownload_button:
+            #     print("用户选择了重新下载")
+            #     self.start_download()
 
     def open_explorer(self, path):
         rpath = path.replace("\\", "/")
@@ -231,8 +244,3 @@ class M3U8DownloadPage(Page):
             # subprocess.Popen(['xdg-open', path])
         else:
             print(f"路径不存在: {rpath}")
-
-    def closeEvent(self, event):
-        if self.m3u8_downloader:
-            self.m3u8_downloader.finished.emit()
-        super().closeEvent(event)

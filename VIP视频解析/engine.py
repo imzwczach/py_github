@@ -21,6 +21,7 @@ class Album:
         self.update = None
         self.desc = None
         self.score = None
+        self.speed = None
 
     def __str__(self):
         # 返回可读性强的字符串
@@ -37,6 +38,7 @@ class Engine(QObject):
         self.support_search = config['search'] if 'search' in config else False
         self.has_thumb = config['thumb'] if 'thumb' in config else False
         self.grid = config['grid'] if 'grid' in config else False
+        self.ban_ads = config['ban_ads'] if 'ban_ads' in config else False
 
     def get_reponse_josn(self, url):
         try:
@@ -103,7 +105,18 @@ class EngineWKVip(Engine):
 
 import execjs
 class EngineVideoLove(Engine):
-    def search_albums(self, keyword, page=1):
+    
+    def search_albums(self, keyword):
+        albums = []
+        for i in range(1): #最多取5页
+            pidx = i+1
+            page_albums = self._get_albums_by_page(keyword=keyword, page=pidx)
+            if len(page_albums) == 0:
+                break
+            albums.extend(page_albums)
+        return sorted(albums, key=lambda obj: obj.nums, reverse=True)
+
+    def _get_albums_by_page(self, keyword, page):
         try:
             # 尝试调用在js文件中定义的函数
             res = Config().ctx.call('getargs')
@@ -129,7 +142,7 @@ class EngineVideoLove(Engine):
             return albums
         except execjs._exceptions.ProgramError as e:
             raise Exception(f"执行函数出错:{e}")
-        
+
     def get_album_detail(self, album):
         return album        
 
@@ -137,10 +150,10 @@ class EngineVideoLove(Engine):
 # https://moduzy1.com/list1/
 class EngineMoDu(Engine):
 
-    def request_album_url(self, keyword=None):
-        return "https://moduzy1.com/list1/"
+    def request_album_url(self, page):
+        return f"https://moduzy1.com/list1-{page}/"
 
-    def get_albums(self, page=None):
+    def get_albums(self, page=1):
         data = self.get_reponse_text(self.request_album_url(page)).encode('utf-8')
         # 将字符串转换为 HTML 树结构
         html_tree = etree.HTML(data)

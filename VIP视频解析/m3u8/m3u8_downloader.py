@@ -20,11 +20,14 @@ class M3u8Downloader(QObject):
     # 定义一个信号
     info_signal = Signal(str)
     progress_signal = Signal(dict)
+    avg_speed_signal = Signal(float)
     download_state_signal = Signal(tuple)
     got_video_duration_signal = Signal(float, str)
     finished = Signal()
 
-    def __init__(self, inputString, dir_path='D:\\', head_time='0:0', tail_time='999999:0'):
+    maxWorkers = 5
+
+    def __init__(self, inputString, ban_ads=False, dir_path='D:\\', head_time='0:0', tail_time='999999:0'):
         super().__init__()
 
         # Split the content into lines
@@ -48,11 +51,13 @@ class M3u8Downloader(QObject):
             infos.append(info)
         
         self.m3u8_infos = infos
+        self.baned_ads = ban_ads
         self.dir_path = dir_path
         self.head_time = re.sub(r"[-： _]", ":", head_time) or '0:0'
         self.tail_time = re.sub(r"[-： _]", ":", tail_time) or '999999:0'
+        self.baned_head_tail = not (head_time=='0:0'and tail_time=='999999:0')
 
-        self.executor = ThreadPoolExecutor(max_workers=10)
+        self.executor = ThreadPoolExecutor(max_workers=self.maxWorkers)
         self.futures = []  # 用于存储任务的引用
         self._is_cancelled = False  # 用于控制任务是否被取消
         self._is_paused = False  # 控制是否暂停
@@ -89,7 +94,6 @@ class M3u8Downloader(QObject):
                     break
             correct_url = str1[:len(str1)-len(common_part)] + str2
             return correct_url
-
 
     def get_ts_lines(self, url):
         # print(f'fetched url: {url}')
@@ -147,7 +151,10 @@ class M3u8Downloader(QObject):
             self.info_signal.emit(f"❌下载m3u8文件时出现未知错误:{e}")
             return []
 
-    def get_trim_head_tail_lines(self, lines, head='0:0', tail="99999999:0"):
+    def get_trim_head_tail_lines(self, lines, head, tail):
+        if not self.baned_head_tail:
+            return lines
+        
         # 分割时间为分钟和秒
         minutes1, seconds1 = map(int, head.split(":"))
         minutes2, seconds2 = map(int, tail.split(":"))
@@ -190,6 +197,8 @@ class M3u8Downloader(QObject):
         return result_lines
 
     def get_ignore_ads_lines(self, lines):
+        if not self.baned_ads:
+            return lines
         # Initialize a variable to keep track if we are inside the block to remove
         inside_discontinuity_block = False
         result_lines = []
@@ -246,17 +255,18 @@ class M3u8Downloader(QObject):
 
         if os.path.exists(file_name):
             self.info_signal.emit(f'😀️{index}.ts 已存在')
-            return True
+            return 1 #1字节，表示已下载
 
         try:
             # 发送HTTP GET请求获取文件内容
-            response = requests.get(url, timeout=5)
+            headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36 Edg/130.0.0.0'}
+            response = requests.get(url, timeout=5, headers=headers)
             response.raise_for_status()  # 检查请求是否成功
             # 将文件内容保存到本地
             with open(file_name, "wb") as file:
                 file.write(response.content)
                 self.info_signal.emit(f"😀下载 {dir}/{index}.ts 成功！")
-            return True
+            return len(response.content)
 
         except requests.Timeout:
             self.info_signal.emit(f"⚠下载 {dir}/{index}.ts 时超时，2秒后重试！")
@@ -276,19 +286,17 @@ class M3u8Downloader(QObject):
 
     def handle_download(self, url, index, download_dir):
         if self._is_cancelled:
-            return False
+            return 0
         else:
             while self._is_paused:  # 如果被暂停，则等待
-                time.sleep(0.5)  # 确保不会占用 CPU 资源
+                time.sleep(0.1)  # 确保不会占用 CPU 资源
 
             try:
-                result1 = self.download_file(url, index, download_dir)
+                return self.download_file(url, index, download_dir)
             except RetryError:
                 # print(f"❌下载 {index}.ts 重试次数已用完，下载失败！")  # 当重试次数用完时打印
                 self.info_signal.emit(f"❌下载 {index}.ts 重试次数已用完，下载失败！")  # 当重试次数用完时打印
-                return False
-            else:
-                return result1
+                return 0
 
     def download_ts_files(self):
 
@@ -304,7 +312,18 @@ class M3u8Downloader(QObject):
             completed_count = 0
             self.futures = []
 
+            downloaded_size = 0
+            start_time = time.time()
+
             self.info_signal.emit(f'\n\n————准备下载《{m3u8_info["name"]}》视频切片')
+
+            while self._is_paused:
+                time.sleep(0.1)
+
+            if self._is_cancelled:
+                self.info_signal.emit("下载已被取消。")
+                self.finished.emit()
+                return
 
             # 为每个URL分配任务
             for index, url in enumerate(urls):
@@ -313,15 +332,31 @@ class M3u8Downloader(QObject):
 
             # 使用 as_completed 来跟踪任务完成情况
             for future in as_completed(self.futures):
+                
                 if self._is_cancelled:
                     self.info_signal.emit("下载已被取消。")
-                    break
-                elif future.result():
+                    self.finished.emit()
+                    return
+
+                data_size = future.result()
+                if data_size > 0:
                     completed_count += 1
+
                     # 计算进度百分比
                     progress = int((completed_count / total_count) * 100)
                     ext = {'value': progress, 'total': total_count, 'current': completed_count}
                     self.progress_signal.emit(ext)  # 发射进度信号
+
+                    # 计算下载速度
+                    downloaded_size += data_size
+                    if completed_count%self.maxWorkers==0: # 每n个切片计算平均速度
+                        end_time = time.time()
+                        if end_time != start_time:
+                            speed_in_mbps = (downloaded_size*8/(1024 * 1024)) / (end_time - start_time)  # MB每秒
+                            self.avg_speed_signal.emit(speed_in_mbps)
+                            # print(f'平均下载速度: {speed_in_mbps:.2f} Mb/S')
+                            downloaded_size = 0
+                            start_time = time.time()
 
             if not self._is_cancelled:
                 if completed_count < total_count:

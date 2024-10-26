@@ -74,6 +74,8 @@ class HomePage(Page, ListPageDelegate, GridPageDelegate):
         self.layout.addLayout(hhbox)
         self.pageIndex = 1
 
+        self.reload_data()
+
     def engine_changed_index(self, index):
         self.engine = self.engines[index]
         page = None
@@ -116,9 +118,6 @@ class HomePage(Page, ListPageDelegate, GridPageDelegate):
         album = self.albums[index]
         vc = SearchPage(album.title)
         self.push(vc)
-
-    def showEvent(self, event):
-        self.reload_data()
 
     def on_search(self):
         vc = SearchPage()

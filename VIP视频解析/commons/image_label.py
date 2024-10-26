@@ -57,7 +57,8 @@ class ImageLabel(ClickableLabel):
                 self.download_thread.imageDownloaded.connect(self.handle_downloaded_image)
                 self.download_thread.start()
             except:
-                pass
+                self.download_thread.quit()
+                self.download_thread.wait()
 
     def handle_downloaded_image(self, content):
        if content:

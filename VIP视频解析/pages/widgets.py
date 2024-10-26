@@ -31,8 +31,8 @@ class CustomWidget(QWidget):
             text += f"&emsp; <span style='font-size:12px;color:blue;'>{album.nums}集</span>"
         if album.update:
             text += f"&emsp; <span style='font-size:12px;'>{album.update}</span>"
-        text_label = QLabel(text) 
-        hbox.addWidget(text_label)
+        self.text_label = QLabel(text) 
+        hbox.addWidget(self.text_label)
 
         if album.date:
             today_str = datetime.datetime.now().strftime("%Y-%m-%d")
@@ -46,7 +46,6 @@ class CustomWidget(QWidget):
     
     def title(self):
         return self.album.title
-    
 
 class GridWidget(QWidget):
     def __init__(self, album:Album):

@@ -13,8 +13,8 @@ class Page(QWidget):
 
         # 创建垂直布局
         self.layout = QVBoxLayout(self)
-        # self.layout.setSpacing(0)  # 控件间距为 0
-        # self.layout.setContentsMargins(0, 0, 0, 0)  # 去除边距
+        self.layout.setSpacing(0)  # 控件间距为 0
+        self.layout.setContentsMargins(0, 0, 0, 0)  # 去除边距
 
     def push(self, page):
         if self.navigation_controller and page:
@@ -23,6 +23,9 @@ class Page(QWidget):
     def pop(self):
         if self.navigation_controller:
             self.navigation_controller.pop()
+
+    def willDestory(self):
+        pass
         
 class ListPageDelegate:
     def list_page_items(list_widget:QListWidget):
@@ -176,6 +179,7 @@ class NavigationController(QWidget):
         if len(self.page_stack) > 1:
             # 弹出当前页面
             popped_page = self.page_stack.pop()
+            popped_page.willDestory()
             self.stacked_widget.removeWidget(popped_page)
 
             # 显示前一个页面
